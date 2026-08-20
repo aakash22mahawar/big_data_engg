@@ -1,0 +1,87 @@
+
+---------------------
+
+CREATE EXTERNAL TABLE IF NOT EXISTS sales_table (
+    region          STRING,
+    country         STRING,
+    item_type       STRING,
+    sales_channel   STRING,
+    order_priority  STRING,
+    order_date      STRING,
+    order_id        BIGINT,
+    ship_date       STRING,
+    units_sold      INT,
+    unit_price      DOUBLE,
+    unit_cost       DOUBLE,
+    total_revenue   DOUBLE,
+    total_cost      DOUBLE,
+    total_profit    DOUBLE
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION 's3://telemetry-aakash/big_data_engg/'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+------------------------------------------
+
+SET hive.cli.print.header=true;
+--------------------------------------------
+ -- without partition
+ 
+CREATE TABLE sales_transformed (                 
+    region STRING,
+    country STRING,
+    item_type STRING,
+    sales_channel STRING,
+    units_sold INT,
+    unit_price DOUBLE,
+    unit_cost DOUBLE,
+    sales_amount DOUBLE,
+    profit_amount DOUBLE
+);
+------------------------------------------------------------
+-- with dynamic partition
+
+CREATE TABLE sales_partitioned (
+    country STRING,
+    item_type STRING,
+    sales_channel STRING,
+    units_sold INT,
+    unit_price DOUBLE,
+    unit_cost DOUBLE,
+    sales_amount DOUBLE,
+    profit_amount DOUBLE
+)
+PARTITIONED BY (region STRING);
+-------------------------------------------
+SET hive.exec.dynamic.partition=true;
+SET hive.exec.dynamic.partition.mode=nonstrict;
+-------------------------------------------------
+INSERT OVERWRITE TABLE sales_partitioned PARTITION (region)
+     SELECT
+         country,
+         item_type,
+         sales_channel,
+         units_sold,
+         unit_price,
+         unit_cost,
+         units_sold * unit_price AS sales_amount,
+         units_sold * (unit_price - unit_cost) AS profit_amount,
+         region
+     FROM sales_table;
+	 
+---------------------------------------------------------------------	 
+	
+SHOW PARTITIONS sales_partitioned;
+
+
+
+WHERE region = 'Asia'
+        ↓
+Partition pruning ✅
+
+
+WHERE units_sold > 5000
+        ↓
+Partition pruning based on region ❌
