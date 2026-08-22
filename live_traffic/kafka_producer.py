@@ -14,18 +14,42 @@ from kafka import KafkaProducer
 
 # Initialize configuration
 
-config = configparser.ConfigParser()
+# config = configparser.ConfigParser()
 
-config_path = os.path.join(os.path.dirname(__file__),"..","config.ini")
+# config_path = os.path.join(os.path.dirname(__file__),"..","config.ini")
 
-config.read(os.path.abspath(config_path))
+# config.read(os.path.abspath(config_path))
 
 
 # Read Kafka configuration
 
-kafka_key = config["KAFKA"]["ACCESS_KEY"]
-kafka_secret = config["KAFKA"]["SECRET_KEY"]
-kafka_server = config["KAFKA"]["BOOTSTRAP_SERVER"]
+# kafka_key = config["KAFKA"]["ACCESS_KEY"]
+# kafka_secret = config["KAFKA"]["SECRET_KEY"]
+# kafka_server = config["KAFKA"]["BOOTSTRAP_SERVER"]
+
+# -----------------------------
+# Read Kafka configuration
+# -----------------------------
+
+kafka_key = dbutils.secrets.get(
+    catalog="live_traffic_kafka",
+    schema="bronze",
+    key="confluent_kafka_key"
+)
+
+kafka_secret = dbutils.secrets.get(
+    catalog="live_traffic_kafka",
+    schema="bronze",
+    key="confluent_kafka_secret"
+)
+
+kafka_server = dbutils.secrets.get(
+    catalog="live_traffic_kafka",
+    schema="bronze",
+    key="kafka_bootstrap_server"
+)
+
+kafka_topic = "traffic-topic"
 
 
 # Initialize Faker

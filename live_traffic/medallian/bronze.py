@@ -14,11 +14,6 @@ spark = (
     .getOrCreate()
 )
 
-spark.sparkContext.setLogLevel(
-    "WARN"
-)
-
-
 # -----------------------------
 # Read Kafka configuration
 # -----------------------------
@@ -61,7 +56,7 @@ raw_stream = (
     )
     .option(
         "startingOffsets",
-        "latest"
+        "latest"                                 #latest or earliest
     )
     .option(
         "kafka.security.protocol",
@@ -73,7 +68,7 @@ raw_stream = (
     )
     .option(
         "kafka.sasl.jaas.config",
-        f'org.apache.kafka.common.security.plain.PlainLoginModule required '
+        f'kafkashaded.org.apache.kafka.common.security.plain.PlainLoginModule required '
         f'username="{kafka_key}" '
         f'password="{kafka_secret}";'
     )
@@ -121,9 +116,12 @@ bronze_query = (
     bronze_stream.writeStream
     .format("delta")
     .outputMode("append")
+    .trigger(                               
+        availableNow=True                       ##process all the msgs which are already available
+    )
     .option(
         "checkpointLocation",
-        "/Volumes/live_traffic_kafka/bronze/checkpoint_volume/checkpoint/"
+        "/Volumes/live_traffic_kafka/bronze/checkpoint_volume/bronze/"
     )
     .toTable(
         "live_traffic_kafka.bronze.traffic_bronze"
