@@ -1,10 +1,36 @@
+import logging
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
 
 # -----------------------------
+# Initialize logging
+# -----------------------------
+
+# Define the log format and date format
+log_format = '%(asctime)s - %(levelname)s - %(message)s'
+date_format = '%d-%m-%Y %H:%M:%S'
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=log_format,
+    datefmt=date_format
+)
+
+
+logger = logging.getLogger(
+    "live_traffic_bronze"
+)
+
+
+# -----------------------------
 # Initialize Spark session
 # -----------------------------
+
+logger.info(
+    "Starting Bronze streaming job."
+)
 
 spark = (
     SparkSession.builder
@@ -13,6 +39,11 @@ spark = (
     )
     .getOrCreate()
 )
+
+logger.info(
+    "Spark session initialized."
+)
+
 
 # -----------------------------
 # Read Kafka configuration
@@ -39,9 +70,22 @@ kafka_server = dbutils.secrets.get(
 kafka_topic = "traffic-topic"
 
 
+logger.info(
+    "Kafka configuration loaded."
+)
+
+logger.info(
+    f"Kafka topic: {kafka_topic}"
+)
+
+
 # -----------------------------
 # Kafka Raw Stream
 # -----------------------------
+
+logger.info(
+    "Connecting to Kafka."
+)
 
 raw_stream = (
     spark.readStream
@@ -56,7 +100,7 @@ raw_stream = (
     )
     .option(
         "startingOffsets",
-        "latest"                                 #latest or earliest
+        "latest"
     )
     .option(
         "kafka.security.protocol",
@@ -73,6 +117,10 @@ raw_stream = (
         f'password="{kafka_secret}";'
     )
     .load()
+)
+
+logger.info(
+    "Kafka stream configured successfully."
 )
 
 
@@ -108,24 +156,93 @@ bronze_stream = raw_stream.select(
 )
 
 
+logger.info(
+    "Kafka stream transformed for Bronze."
+)
+
+
+# -----------------------------
+# Process each micro-batch
+# -----------------------------
+
+def process_batch(
+    batch_df,
+    batch_id
+):
+
+    message_count = batch_df.count()
+
+
+    logger.info(
+        f"Batch {batch_id} received | "
+        f"messages={message_count}"
+    )
+
+
+    if message_count == 0:
+
+        logger.info(
+            f"Batch {batch_id} contained no messages."
+        )
+
+        return
+
+
+    try:
+
+        logger.info(
+            f"Writing batch {batch_id} to Bronze Delta."
+        )
+
+        batch_df.write \
+            .format("delta") \
+            .mode("append") \
+            .saveAsTable(
+                "live_traffic_kafka.bronze.traffic_bronze"
+            )
+
+
+        logger.info(
+            f"Batch {batch_id} successfully written | "
+            f"messages={message_count}"
+        )
+
+
+    except Exception as error:
+
+        logger.error(
+            f"Batch {batch_id} failed | "
+            f"messages={message_count} | "
+            f"error={error}"
+        )
+
+        raise
+
+
 # -----------------------------
 # Bronze Delta Write
 # -----------------------------
 
+logger.info(
+    "Starting Bronze streaming query."
+)
+
 bronze_query = (
     bronze_stream.writeStream
-    .format("delta")
-    .outputMode("append")
-    .trigger(                               
-        availableNow=True                       ##process all the msgs which are already available
+    .foreachBatch(
+        process_batch
+    )
+    .outputMode(
+        "append"
+    )
+    .trigger(
+        availableNow=True
     )
     .option(
         "checkpointLocation",
         "/Volumes/live_traffic_kafka/bronze/checkpoint_volume/bronze/"
     )
-    .toTable(
-        "live_traffic_kafka.bronze.traffic_bronze"
-    )
+    .start()
 )
 
 
@@ -133,4 +250,12 @@ bronze_query = (
 # Start streaming query
 # -----------------------------
 
+logger.info(
+    "Bronze streaming query started."
+)
+
 bronze_query.awaitTermination()
+
+logger.info(
+    "Bronze streaming query completed."
+)

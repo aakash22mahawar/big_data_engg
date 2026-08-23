@@ -1,6 +1,12 @@
-import configparser
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# dependencies = [
+#   "-r /Workspace/Users/aakash22mahawar@gmail.com/big_data_engg/requirements.txt",
+# ]
+# ///
 import json
-import os
+import logging
 import random
 import time
 
@@ -12,20 +18,24 @@ from faker import Faker
 from kafka import KafkaProducer
 
 
-# Initialize configuration
+# -----------------------------
+# Initialize logging
+# -----------------------------
 
-# config = configparser.ConfigParser()
+# Define the log format and date format
+log_format = '%(asctime)s - %(levelname)s - %(message)s'
+date_format = '%d-%m-%Y %H:%M:%S'
 
-# config_path = os.path.join(os.path.dirname(__file__),"..","config.ini")
+logging.basicConfig(
+    level=logging.INFO,
+    format=log_format,
+    datefmt=date_format
+)
 
-# config.read(os.path.abspath(config_path))
+logger = logging.getLogger(
+    "live_traffic_producer"
+)
 
-
-# Read Kafka configuration
-
-# kafka_key = config["KAFKA"]["ACCESS_KEY"]
-# kafka_secret = config["KAFKA"]["SECRET_KEY"]
-# kafka_server = config["KAFKA"]["BOOTSTRAP_SERVER"]
 
 # -----------------------------
 # Read Kafka configuration
@@ -52,12 +62,25 @@ kafka_server = dbutils.secrets.get(
 kafka_topic = "traffic-topic"
 
 
+logger.info(
+    "Kafka configuration loaded."
+)
+
+logger.info(
+    f"Kafka topic: {kafka_topic}"
+)
+
+
+# -----------------------------
 # Initialize Faker
+# -----------------------------
 
 fake = Faker()
 
 
+# -----------------------------
 # Establish Kafka connection
+# -----------------------------
 
 producer = KafkaProducer(
 
@@ -71,7 +94,16 @@ producer = KafkaProducer(
 
     sasl_plain_password=kafka_secret,
 
+    acks="all",
+
+    retries=5,
+
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
+)
+
+
+logger.info(
+    "Kafka producer initialized successfully."
 )
 
 
@@ -256,11 +288,23 @@ def generate_dirty_event():
 
 def start_streaming():
 
-    message_count = 0
+    generated_count = 0
+
+    successful_count = 0
+
+    failed_count = 0
+
+    logger.info(
+        "Traffic producer started."
+    )
+
 
     try:
 
         while True:
+
+            generated_count += 1
+
 
             if random.random() < 0.7:
 
@@ -271,41 +315,97 @@ def start_streaming():
                 event = generate_dirty_event()
 
 
-            if isinstance(
-                event,
-                str
-            ):
+            try:
 
-                producer.send(
-                    "traffic-topic",
-                    value={
-                        "raw": event
-                    }
+                if isinstance(
+                    event,
+                    str
+                ):
+
+                    producer.send(
+                        kafka_topic,
+                        value={
+                            "raw": event
+                        }
+                    ).get(
+                        timeout=10
+                    )
+
+                    logger.warning(
+                        "Corrupt event produced."
+                    )
+
+                else:
+
+                    producer.send(
+                        kafka_topic,
+                        value=event
+                    ).get(
+                        timeout=10
+                    )
+
+                    logger.info(
+                        "Traffic event produced successfully."
+                    )
+
+
+                successful_count += 1
+
+
+                logger.info(
+                    f"Producer statistics | "
+                    f"generated={generated_count} | "
+                    f"successful={successful_count} | "
+                    f"failed={failed_count}"
                 )
 
-                print(
-                    "CORRUPT EVENT SENT"
+
+            except Exception as error:
+
+                failed_count += 1
+
+                logger.error(
+                    f"Kafka message delivery failed | "
+                    f"generated={generated_count} | "
+                    f"successful={successful_count} | "
+                    f"failed={failed_count} | "
+                    f"error={error}"
                 )
 
 
-            else:
-
-                producer.send(
-                    "traffic-topic",
-                    value=event
+            time.sleep(
+                random.uniform(
+                    0.5,
+                    1.5
                 )
+            )
 
-                print(event)
-
-            message_count +=1  
-
-            time.sleep(random.uniform(0.5,1.5))  
-
-            print(f"Message successfully produced: {message_count}") 
 
     except KeyboardInterrupt:
 
-         print(f"Message successfully produced: {message_count}") 
+        logger.info(
+            "Producer interrupted by user."
+        )
+
+
+    finally:
+
+        logger.info(
+            "Flushing pending Kafka messages..."
+        )
+
+        producer.flush()
+
+
+        producer.close()
+
+
+        logger.info(
+            f"Producer stopped | "
+            f"generated={generated_count} | "
+            f"successful={successful_count} | "
+            f"failed={failed_count}"
+        )
 
 
 # -----------------------------
