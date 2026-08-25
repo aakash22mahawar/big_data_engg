@@ -235,9 +235,6 @@ bronze_query = (
     .outputMode(
         "append"
     )
-    .trigger(
-        availableNow=True
-    )
     .option(
         "checkpointLocation",
         "/Volumes/live_traffic_kafka/bronze/checkpoint_volume/bronze/"
@@ -255,7 +252,3 @@ logger.info(
 )
 
 bronze_query.awaitTermination()
-
-logger.info(
-    "Bronze streaming query completed."
-)
