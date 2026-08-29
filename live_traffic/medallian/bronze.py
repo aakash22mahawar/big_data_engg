@@ -1,5 +1,9 @@
 import logging
 
+from datetime import datetime
+
+import pytz
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
@@ -12,11 +16,46 @@ from pyspark.sql.functions import col
 log_format = '%(asctime)s - %(levelname)s - %(message)s'
 date_format = '%d-%m-%Y %H:%M:%S'
 
+
+class ISTFormatter(
+    logging.Formatter
+):
+
+    def formatTime(
+        self,
+        record,
+        datefmt=None
+    ):
+
+        ist = pytz.timezone(
+            "Asia/Kolkata"
+        )
+
+        dt = datetime.fromtimestamp(
+            record.created,
+            ist
+        )
+
+        return dt.strftime(
+            datefmt
+        )
+
+
 logging.basicConfig(
     level=logging.INFO,
     format=log_format,
     datefmt=date_format
 )
+
+
+for handler in logging.getLogger().handlers:
+
+    handler.setFormatter(
+        ISTFormatter(
+            log_format,
+            date_format
+        )
+    )
 
 
 logger = logging.getLogger(
@@ -39,6 +78,11 @@ spark = (
     )
     .getOrCreate()
 )
+
+# spark.conf.set(
+#     "spark.sql.session.timeZone",
+#     "Asia/Kolkata"
+# )
 
 logger.info(
     "Spark session initialized."

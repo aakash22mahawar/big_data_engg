@@ -38,6 +38,15 @@ logger = logging.getLogger(
 
 
 # -----------------------------
+# Define timezone
+# -----------------------------
+
+ist = pytz.timezone(
+    "Asia/Kolkata"
+)
+
+
+# -----------------------------
 # Read Kafka configuration
 # -----------------------------
 
@@ -172,7 +181,7 @@ def generate_clean_event():
         ),
 
         "event_time": datetime.now(
-            pytz.utc
+            ist
         ).isoformat()
     }
 
@@ -227,7 +236,7 @@ def generate_dirty_event():
         base["event_time"] = (
 
             datetime.now(
-                pytz.utc
+                ist
             )
 
             - timedelta(
@@ -245,7 +254,7 @@ def generate_dirty_event():
         base["event_time"] = (
 
             datetime.now(
-                pytz.utc
+                ist
             )
 
             + timedelta(
@@ -293,6 +302,7 @@ def start_streaming():
     successful_count = 0
 
     failed_count = 0
+
 
     logger.info(
         "Traffic producer started."
