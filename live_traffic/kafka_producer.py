@@ -16,24 +16,23 @@ import pytz
 
 from faker import Faker
 from kafka import KafkaProducer
+from utils.utils import configure_logging
 
 
-# -----------------------------
-# Initialize logging
-# -----------------------------
+configure_logging()
 
-# Define the log format and date format
-log_format = '%(asctime)s - %(levelname)s - %(message)s'
-date_format = '%d-%m-%Y %H:%M:%S'
-
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    datefmt=date_format
-)
 
 logger = logging.getLogger(
     "live_traffic_producer"
+)
+
+
+# -----------------------------
+# Define timezone
+# -----------------------------
+
+ist = pytz.timezone(
+    "Asia/Kolkata"
 )
 
 
@@ -172,7 +171,7 @@ def generate_clean_event():
         ),
 
         "event_time": datetime.now(
-            pytz.utc
+            ist
         ).isoformat()
     }
 
@@ -227,7 +226,7 @@ def generate_dirty_event():
         base["event_time"] = (
 
             datetime.now(
-                pytz.utc
+                ist
             )
 
             - timedelta(
@@ -245,7 +244,7 @@ def generate_dirty_event():
         base["event_time"] = (
 
             datetime.now(
-                pytz.utc
+                ist
             )
 
             + timedelta(
@@ -293,6 +292,7 @@ def start_streaming():
     successful_count = 0
 
     failed_count = 0
+
 
     logger.info(
         "Traffic producer started."

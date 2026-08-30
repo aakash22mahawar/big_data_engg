@@ -1,22 +1,20 @@
 import logging
 
+from datetime import datetime
+
+import pytz
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
+import os
+import sys
+sys.path.append("/Workspace/Users/aakash22mahawar@gmail.com/big_data_engg/live_traffic")
 
-# -----------------------------
-# Initialize logging
-# -----------------------------
+from utils.utils import configure_logging
 
-# Define the log format and date format
-log_format = '%(asctime)s - %(levelname)s - %(message)s'
-date_format = '%d-%m-%Y %H:%M:%S'
 
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    datefmt=date_format
-)
+configure_logging()
 
 
 logger = logging.getLogger(
@@ -39,6 +37,11 @@ spark = (
     )
     .getOrCreate()
 )
+
+# spark.conf.set(
+#     "spark.sql.session.timeZone",
+#     "Asia/Kolkata"
+# )
 
 logger.info(
     "Spark session initialized."
@@ -217,7 +220,6 @@ def process_batch(
         )
 
         raise
-
 
 # -----------------------------
 # Bronze Delta Write
