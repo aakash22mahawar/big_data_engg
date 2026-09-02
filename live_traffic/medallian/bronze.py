@@ -7,55 +7,14 @@ import pytz
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
+import os
+import sys
+sys.path.append("/Workspace/Users/aakash22mahawar@gmail.com/big_data_engg/live_traffic")
 
-# -----------------------------
-# Initialize logging
-# -----------------------------
-
-# Define the log format and date format
-log_format = '%(asctime)s - %(levelname)s - %(message)s'
-date_format = '%d-%m-%Y %H:%M:%S'
+from utils.utils import configure_logging
 
 
-class ISTFormatter(
-    logging.Formatter
-):
-
-    def formatTime(
-        self,
-        record,
-        datefmt=None
-    ):
-
-        ist = pytz.timezone(
-            "Asia/Kolkata"
-        )
-
-        dt = datetime.fromtimestamp(
-            record.created,
-            ist
-        )
-
-        return dt.strftime(
-            datefmt
-        )
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    datefmt=date_format
-)
-
-
-for handler in logging.getLogger().handlers:
-
-    handler.setFormatter(
-        ISTFormatter(
-            log_format,
-            date_format
-        )
-    )
+configure_logging()
 
 
 logger = logging.getLogger(
@@ -262,7 +221,6 @@ def process_batch(
 
         raise
 
-
 # -----------------------------
 # Bronze Delta Write
 # -----------------------------
@@ -279,6 +237,9 @@ bronze_query = (
     .outputMode(
         "append"
     )
+    .trigger(
+    processingTime="10 seconds")
+    
     .option(
         "checkpointLocation",
         "/Volumes/live_traffic_kafka/bronze/checkpoint_volume/bronze/"
@@ -296,3 +257,7 @@ logger.info(
 )
 
 bronze_query.awaitTermination()
+
+logger.info(
+    "Bronze streaming query completed."
+)

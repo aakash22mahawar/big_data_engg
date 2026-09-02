@@ -5,6 +5,7 @@
 #   "-r /Workspace/Users/aakash22mahawar@gmail.com/big_data_engg/requirements.txt",
 # ]
 # ///
+# 
 import json
 import logging
 import random
@@ -16,21 +17,11 @@ import pytz
 
 from faker import Faker
 from kafka import KafkaProducer
+from utils.utils import configure_logging
 
 
-# -----------------------------
-# Initialize logging
-# -----------------------------
+configure_logging()
 
-# Define the log format and date format
-log_format = '%(asctime)s - %(levelname)s - %(message)s'
-date_format = '%d-%m-%Y %H:%M:%S'
-
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    datefmt=date_format
-)
 
 logger = logging.getLogger(
     "live_traffic_producer"

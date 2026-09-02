@@ -7,60 +7,10 @@ import pytz
 
 from kafka import KafkaConsumer
 
-
-# -----------------------------
-# Initialize logging
-# -----------------------------
-
-# Define the log format and date format
-
-log_format = '%(asctime)s - %(levelname)s - %(message)s'
-date_format = '%d-%m-%Y %H:%M:%S'
+from utils.utils import configure_logging
 
 
-class ISTFormatter(
-    logging.Formatter
-):
-
-    def formatTime(
-        self,
-        record,
-        datefmt=None
-    ):
-
-        ist = pytz.timezone(
-            "Asia/Kolkata"
-        )
-
-        dt = datetime.fromtimestamp(
-            record.created,
-            ist
-        )
-
-        if datefmt:
-
-            return dt.strftime(
-                datefmt
-            )
-
-        return dt.isoformat()
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format=log_format,
-    datefmt=date_format
-)
-
-
-for handler in logging.getLogger().handlers:
-
-    handler.setFormatter(
-        ISTFormatter(
-            log_format,
-            date_format
-        )
-    )
+configure_logging()
 
 
 logger = logging.getLogger(
